@@ -5,3 +5,8 @@ out
 resonances
 *.tar.gz
 venv
+
+/gcode/*.gcode
+/gcode/**/*.png
+
+/moonraker-db/*.db
