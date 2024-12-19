@@ -1,7 +1,7 @@
 <p align=center><img src=img/prind-logo.png height=400px></p>
 
 # prind
-[![Build and Publish Images](https://github.com/mkuf/prind/actions/workflows/image-build-and-publish.yaml/badge.svg)](https://github.com/mkuf/prind/actions/workflows/image-build-and-publish.yaml)
+[![Build and Publish Images](https://github.com/mkuf/prind/actions/workflows/image-build-and-publish-schedule.yaml/badge.svg)](https://github.com/mkuf/prind/actions/workflows/image-build-and-publish-schedule.yaml)
 
 prind allows you to run the software for your 3D printer in Docker containers, eliminating any dependencies on the operating system.  
 This means you can use end-of-life or cutting-edge operating systems, and anything in between.
@@ -328,6 +328,29 @@ Update the `image:` name and add a `build` config:
     build:
       context: docker/moonraker
       target: run
+```
+
+### Healthchecks
+The Klipper, Moonraker, and Ustreamer images include scripts to monitor the overall health of the application. By default, health checks are **disabled** to avoid high CPU usage, which can cause unwanted behavior on low-powered machines.
+
+In tests, container CPU usage **doubled** when health checks were performed every 30 seconds and increased **sixfold** when performed every 5 seconds.
+
+To enable health checks, you can add them to your docker-compose.override.yaml file. Refer to the [Compose file documentation]((https://docs.docker.com/reference/compose-file/services/#healthcheck)) for guidance on customizing these checks.
+
+```yaml
+services:
+  klipper:
+    healthcheck:
+      test: ["python3", "/opt/health.py"]
+      interval: 30s
+  moonraker:
+    healthcheck:
+      test: ["bash", "/opt/health.sh"]
+      interval: 30s
+  webcam:
+    healthcheck:
+      test: ["bash", "/opt/health.sh"]
+      interval: 30s
 ```
 
 ### Enable Mainsail remoteMode

@@ -1,10 +1,10 @@
-name: 'Build Images for Review'
+name: 'Build and Publish Images on Push'
+
 on:
-  pull_request:
+  push:
+    branches:
+      - main
     paths:
-      - .github/actions/**
-      - .github/workflows/image-build-review.yaml
-      - scripts/build/**
       - docker/**
 
 jobs:
@@ -21,24 +21,12 @@ jobs:
         with:
           filters: |
             klipper:
-              - .github/actions/**
-              - .github/workflows/image-build-review.yaml
-              - scripts/build/**
               - docker/klipper/**
             klipperscreen:
-              - .github/actions/**
-              - .github/workflows/image-build-review.yaml
-              - scripts/build/**
               - docker/klipperscreen/**
             moonraker:
-              - .github/actions/**
-              - .github/workflows/image-build-review.yaml
-              - scripts/build/**
               - docker/moonraker/**
             ustreamer:
-              - .github/actions/**
-              - .github/workflows/image-build-review.yaml
-              - scripts/build/**
               - docker/ustreamer/**
   build:
     needs: changes
@@ -47,20 +35,25 @@ jobs:
       fail-fast: false
       matrix:
         app: ${{ fromJSON(needs.changes.outputs.apps) }}
-        platform:
-          - linux/amd64
-          - linux/arm/v6
-          - linux/arm/v7
-          - linux/arm64/v8
     runs-on: ubuntu-latest
     steps:
       - name: "[prind] checkout"
         uses: actions/checkout@v4
       - name: "[prind] set up build environment"
         uses: ./.github/actions/image-build-common
+      - name: "[docker] login"
+        uses: docker/login-action@v3.3.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: "[prind] build"
         run: |
           python3 scripts/build/build.py ${{ matrix.app }} \
             --backfill 0 \
-            --platform ${{ matrix.platform }} \
+            --platform linux/amd64 \
+            --platform linux/arm/v6 \
+            --platform linux/arm/v7 \
+            --platform linux/arm64/v8 \
+            --registry docker.io/${{ secrets.DOCKERHUB_USERNAME }} \
+            --push \
             --force

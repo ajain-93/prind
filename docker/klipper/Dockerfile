@@ -1,6 +1,6 @@
 ## Get Klipper Source and Build venv
 ##
-FROM python:3.11-bookworm as build
+FROM python:3.11-bookworm AS build
 
 RUN apt update \
  && apt install -y cmake \
@@ -18,6 +18,7 @@ ARG VERSION=master
 RUN git clone ${REPO} klipper \
  && cd klipper \
  && git checkout ${VERSION} \
+ && python3 scripts/make_version.py prind > klippy/.version \
  && rm -rf .git
 
 RUN venv/bin/pip install -r klipper/scripts/klippy-requirements.txt \
@@ -28,7 +29,7 @@ RUN venv/bin/pip install -r klipper/scripts/klippy-requirements.txt \
 
 ## Klippy Runtime Image
 ##
-FROM python:3.11-slim-bookworm as run
+FROM python:3.11-slim-bookworm AS run
 
 WORKDIR /opt
 RUN groupadd klipper --gid 1000 \
@@ -37,6 +38,8 @@ RUN groupadd klipper --gid 1000 \
  && usermod klipper --append --groups tty
 RUN mkdir -p printer_data/run printer_data/gcodes printer_data/logs printer_data/config \
  && chown -R klipper:klipper /opt/*
+
+COPY --chown=klipper:klipper health.py ./
 
 COPY --chown=klipper:klipper --from=build /opt/klipper ./klipper
 COPY --chown=klipper:klipper --from=build /opt/venv ./venv
@@ -50,7 +53,7 @@ CMD ["-I", "printer_data/run/klipper.tty", "-a", "printer_data/run/klipper.sock"
 
 ## Image for building MCU code including other tooling
 ##
-FROM debian:bookworm as tools
+FROM debian:bookworm AS tools
 
 WORKDIR /opt
 ARG DEBIAN_FRONTEND=noninteractive
@@ -72,7 +75,7 @@ COPY --from=build /opt/venv ./venv
 
 ## Build the klipper_mcu binary
 ##
-FROM tools as build-hostmcu
+FROM tools AS build-hostmcu
 
 WORKDIR /opt
 
@@ -84,7 +87,7 @@ RUN cd klipper \
 
 ## Runtime image for the klipper_mcu binary
 ##
-FROM debian:bookworm-slim as hostmcu
+FROM debian:bookworm-slim AS hostmcu
 
 RUN apt update \
  && apt install -y gpiod \
@@ -100,7 +103,7 @@ CMD ["-I", "/opt/printer_data/run/klipper_host_mcu.tty"]
 
 ## Build Simulavr and klipper.elf
 ## For manual builds, not uploaded to the docker registry
-FROM tools as build-simulavr
+FROM tools AS build-simulavr
 
 RUN apt update \
  && apt install -y \
